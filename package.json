@@ -2,7 +2,7 @@
   "name": "todo-show",
   "version": "2.3.0",
   "main": "./lib/main",
-  "description": "Finds all the TODOs, FIXMEs, CHANGEDs, etc. in your project.",
+  "description": "yaj.edit Finds all the TODOs, FIXMEs, CHANGEDs, etc. in your project.",
   "repository": "https://github.com/mrodalgaard/atom-todo-show",
   "license": "MIT",
   "engines": {

@@ -57,29 +57,66 @@ class TodoCollection
     @emitter.emit 'did-sort-todos', @todos
 
   todoSorter: (todoA, todoB, sortBy, sortAsc) ->
-    [sortBy2, sortAsc2] = [sortBy, sortAsc]
 
-    aVal = todoA.get(sortBy2)
-    bVal = todoB.get(sortBy2)
+    # TODO MULTI-LEVEL SORT : Unhardcode this into config option.
+    # TODO MULTI-LEVEL SORT : Cleanup api, do we want separate todoSorterMulti method?
+    @todoSorter2(todoA, todoB, [['Type', true], ['Path', true], ['Line', true]])
 
-    if aVal is bVal
-      # Use previous sorts to make a 2-level stable sort
-      if search = @searches?[@searches.length - 2]
-        [sortBy2, sortAsc2] = [search.sortBy, search.sortAsc]
+    # @todoSorter2(todoA, todoB, [[sortBy, sortAsc]])
+    
+    # CLEANUP MULTI-LEVEL SORT : old code
+    # [sortBy2, sortAsc2] = [sortBy, sortAsc]
+    # 
+    # aVal = todoA.get(sortBy2)
+    # bVal = todoB.get(sortBy2)
+    # 
+    # if aVal is bVal
+    #   # Use previous sorts to make a 2-level stable sort
+    #   if search = @searches?[@searches.length - 2]
+    #     [sortBy2, sortAsc2] = [search.sortBy, search.sortAsc]
+    #   else
+    #     sortBy2 = @defaultKey
+    # 
+    #   [aVal, bVal] = [todoA.get(sortBy2), todoB.get(sortBy2)]
+    # 
+    # # Sort type in the defined order, as number or normal string sort
+    # if sortBy2 is 'Type'
+    #   findTheseTodos = atom.config.get('todo-show.findTheseTodos')
+    #   comp = findTheseTodos.indexOf(aVal) - findTheseTodos.indexOf(bVal)
+    # else if todoA.keyIsNumber(sortBy2)
+    #   comp = parseInt(aVal) - parseInt(bVal)
+    # else
+    #   comp = aVal.localeCompare(bVal)
+    # if sortAsc2 then comp else -comp
+
+  todoSorter2: (todoA, todoB, sortBys) ->
+    @todo
+    comp = 0
+    while (comp == 0 and sortBys.length > 0)
+      [sortBy, sortAsc] = sortBys.shift()
+      aVal = todoA.get(sortBy)
+      bVal = todoB.get(sortBy)
+
+      # Sort type in the defined order, as number or normal string sort
+      if sortBy is 'Type'
+        findTheseTodos = atom.config.get('todo-show.findTheseTodos')
+        comp = findTheseTodos.indexOf(aVal) - findTheseTodos.indexOf(bVal)
+      else if todoA.keyIsNumber(sortBy)
+        comp = parseInt(aVal) - parseInt(bVal)
       else
-        sortBy2 = @defaultKey
-
-      [aVal, bVal] = [todoA.get(sortBy2), todoB.get(sortBy2)]
-
-    # Sort type in the defined order, as number or normal string sort
-    if sortBy2 is 'Type'
-      findTheseTodos = atom.config.get('todo-show.findTheseTodos')
-      comp = findTheseTodos.indexOf(aVal) - findTheseTodos.indexOf(bVal)
-    else if todoA.keyIsNumber(sortBy2)
-      comp = parseInt(aVal) - parseInt(bVal)
-    else
-      comp = aVal.localeCompare(bVal)
-    if sortAsc2 then comp else -comp
+        if sortBy is 'Path' and aVal isnt bVal
+          editor = atom.workspace.getActivePaneItem()
+          activePath = editor?.buffer.file?.path
+          if activePath
+            [projectPath, activePath] = atom.project.relativizePath(activePath)            
+            if aVal is activePath
+              comp = -1
+            else if bVal is activePath
+              comp = 1
+        if comp is 0
+          comp = aVal.localeCompare(bVal)
+      if sortAsc then comp else -comp
+    comp
 
   filterTodos: (filter) ->
     @filter = filter
