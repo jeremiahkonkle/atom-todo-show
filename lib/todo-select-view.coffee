@@ -46,13 +46,16 @@ class TodoSelectView
     @selectListView.destroy()
 
   cancel: ->
-    @deserializeEditorState(@initialState)
+    if (@initialState)
+      @deserializeEditorState(@initialState)
+      @initialState = null
     if @panel?
       @panel.destroy()
-    @panel = null
+      @panel = null
     if @previouslyFocusedElement
       @previouslyFocusedElement.focus()
       @previouslyFocusedElement = null
+      
 
   attach: ->
     @previouslyFocusedElement = document.activeElement
@@ -74,9 +77,10 @@ class TodoSelectView
     return unless todo and todo.loc
     
     position = [todo.position[0][0], todo.position[0][1]]
-      
+    console.log('opening', todo.loc)
     atom.workspace.open(todo.loc, {activatePane: activate})
       .then ->
+        console.log('opened', position)
         if textEditor = atom.workspace.getActiveTextEditor()
           textEditor.setCursorBufferPosition(position, autoscroll: false)
           textEditor.scrollToCursorPosition(center: true)
