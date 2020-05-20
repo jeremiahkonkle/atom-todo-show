@@ -48,19 +48,36 @@ class TodoCollection
       @searches.push {sortBy, sortAsc}
     else
       @searches[@searches.length - 1] = {sortBy, sortAsc}
+    
+    curr1Focus = undefined
+    
+    child_process = require('child_process')
+    output = child_process.execSync('tlog -o log').toString()
+    if output
+      output = output.split('\t')[1]
+      output = output.split(':')
+      if output[0].indexOf('linklings') != -1
+        output = output.slice(1)
+      
+      if output[0].indexOf('projects') != -1
+        output = output.slice(1)
+      
+      curr1Focus = output.join(':').trim().toUpperCase()
+
+    console.log('about to sort', curr1Focus)
 
     @todos = @todos.sort((todoA, todoB) =>
-      @todoSorter(todoA, todoB, sortBy, sortAsc)
+      @todoSorter(todoA, todoB, sortBy, sortAsc, curr1Focus)
     )
 
     return @filterTodos(@filter) if @filter
     @emitter.emit 'did-sort-todos', @todos
 
-  todoSorter: (todoA, todoB, sortBy, sortAsc) ->
+  todoSorter: (todoA, todoB, sortBy, sortAsc, curr1Focus) ->
 
     # TODO MULTI-LEVEL SORT : Unhardcode this into config option.
     # TODO MULTI-LEVEL SORT : Cleanup api, do we want separate todoSorterMulti method?
-    @todoSorter2(todoA, todoB, [['Type', true], ['Path', true], ['Line', true]])
+    @todoSorter2(todoA, todoB, curr1Focus, [['1Focus', false], ['Type', true], ['Path', true], ['Line', true]])
 
     # @todoSorter2(todoA, todoB, [[sortBy, sortAsc]])
     
@@ -89,33 +106,44 @@ class TodoCollection
     #   comp = aVal.localeCompare(bVal)
     # if sortAsc2 then comp else -comp
 
-  todoSorter2: (todoA, todoB, sortBys) ->
+  todoSorter2: (todoA, todoB, curr1Focus, sortBys) ->
     @todo
     comp = 0
     while (comp == 0 and sortBys.length > 0)
       [sortBy, sortAsc] = sortBys.shift()
-      aVal = todoA.get(sortBy)
-      bVal = todoB.get(sortBy)
-
-      # Sort type in the defined order, as number or normal string sort
-      if sortBy is 'Type'
-        findTheseTodos = atom.config.get('todo-show.findTheseTodos')
-        comp = findTheseTodos.indexOf(aVal) - findTheseTodos.indexOf(bVal)
-      else if todoA.keyIsNumber(sortBy)
-        comp = parseInt(aVal) - parseInt(bVal)
+      
+      if sortBy is '1Focus'
+        comp = 
+          todoA.get('Text').indexOf(curr1Focus) -
+          todoB.get('Text').indexOf(curr1Focus)
+        console.log('1Focus', todoA.get('Text'), todoB.get('Text'), comp)
       else
-        if sortBy is 'Path' and aVal isnt bVal
-          editor = atom.workspace.getActivePaneItem()
-          activePath = editor?.buffer.file?.path
-          if activePath
-            [projectPath, activePath] = atom.project.relativizePath(activePath)            
-            if aVal is activePath
-              comp = -1
-            else if bVal is activePath
-              comp = 1
-        if comp is 0
-          comp = aVal.localeCompare(bVal)
-      if sortAsc then comp else -comp
+        aVal = todoA.get(sortBy)
+        bVal = todoB.get(sortBy)
+
+        # Sort type in the defined order, as number or normal string sort
+        if sortBy is 'Type'
+          findTheseTodos = atom.config.get('todo-show.findTheseTodos')
+          comp = findTheseTodos.indexOf(aVal) - findTheseTodos.indexOf(bVal)
+        else if todoA.keyIsNumber(sortBy)
+          comp = parseInt(aVal) - parseInt(bVal)
+        else
+          if sortBy is 'Path' and aVal isnt bVal
+            editor = atom.workspace.getActivePaneItem()
+            activePath = editor?.buffer.file?.path
+            if activePath
+              [projectPath, activePath] = atom.project.relativizePath(activePath)            
+              if aVal is activePath
+                comp = -1
+              else if bVal is activePath
+                comp = 1
+          if comp is 0
+            comp = aVal.localeCompare(bVal)
+      
+      if not sortAsc
+        comp = -comp
+      
+    console.log('comp', todoA.get('Text'), todoB.get('Text'), comp)
     comp
 
   filterTodos: (filter) ->
